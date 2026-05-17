@@ -1,12 +1,22 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { loadData, saveData } from "../../utils/localStorageUtils";
+import { useTheme } from "../../context/ThemeContext";
+import toast from "react-hot-toast";
+import { exportToExcel } from "../../utils/exportUtils";
+import ProductCart from "./ProductCart";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProducts, addProduct, updateProduct, deleteProduct, setProducts } from '../../store/inventorySlice';
+
 
 const Inventory = () => {
-  const [products, setProducts] = useState([]);
+  const { darkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [newItem, setNewItem] = useState({
     title: "",
     brand: "",
@@ -15,9 +25,14 @@ const Inventory = () => {
     thumbnail: "",
   });
 
-  const filteredProducts = products.filter((p) =>
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const dispatch = useDispatch();
+  const { items, status } = useSelector((state) => state.inventory);
+
+  const filteredProducts = items.filter((item) => {
+  if (selectedCategory === "All") return true;
+
+  return item.category?.toLowerCase() === selectedCategory.toLowerCase();
+});
 
   const fetchInventory = async () => {
     try {
@@ -34,6 +49,9 @@ const Inventory = () => {
     }
   };
 
+const categories = ["All", ...new Set(items.map(p => p.category))];
+
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setNewItem((prev) => ({ ...prev, [name]: value }));
@@ -42,39 +60,103 @@ const Inventory = () => {
   const handleSaveProduct = (e) => {
     e.preventDefault();
 
-    const productToSave = {
-      id: Date.now(),
-      title: newItem.title,
-      brand: newItem.brand,
-      stock: Number(newItem.stock) || 0,
-      price: Number(newItem.price) || 0,
-      thumbnail: newItem.thumbnail || "https://via.placeholder.com/80",
-    };
+    if (isEditing) {
+      // Update existing product
+      const updatedProduct = {
+        ...items.find(p => p.id === editingId),
+        title: newItem.title,
+        brand: newItem.brand,
+        stock: Number(newItem.stock) || 0,
+        price: Number(newItem.price) || 0,
+        thumbnail: newItem.thumbnail || "https://via.placeholder.com/80",
+      };
+      dispatch(updateProduct(updatedProduct));
+      toast.success('Product updated successfully', {
+        style: {
+          borderRadius: '10px',
+          background: '#333',
+          color: '#fff',
+        }
+      });
+    } else {
+      // Add new product
+      const productToSave = {
+        id: Date.now(),
+        title: newItem.title,
+        brand: newItem.brand,
+        stock: Number(newItem.stock) || 0,
+        price: Number(newItem.price) || 0,
+        thumbnail: newItem.thumbnail || "https://via.placeholder.com/80",
+      };
+      dispatch(addProduct(productToSave));
+      toast.success('Product added successfully');
+    }
 
-    setProducts([productToSave, ...products]);
     setIsModalOpen(false);
+    setIsEditing(false);
+    setEditingId(null);
     setNewItem({ title: "", brand: "", stock: "", price: "", thumbnail: "" });
   };
 
   const handleDeleteProduct = (id) => {
-    setProducts(products.filter((product) => product.id !== id));
+    if (window.confirm("Are you sure?")) {
+      dispatch(deleteProduct(id));
+      toast.error('Product removed successfully');
+    }
   };
 
-  useEffect(() => {
-    const savedProducts = loadData("my-inventory");
-    if (savedProducts) {
-      setProducts(savedProducts);
-      setLoading(false);
-    } else {
-      fetchInventory();
+  const handleEditProduct = (product) => {
+    setIsEditing(true);
+    setEditingId(product.id);
+    setNewItem({
+      title: product.title,
+      brand: product.brand,
+      stock: product.stock,
+      price: product.price,
+      thumbnail: product.thumbnail,
+    });
+    setIsModalOpen(true);
+  };
+
+
+
+  const handleImageUpload = (e)=>{
+    const file = e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onloadend = ()=>{
+        setNewItem(prev=>({...prev, thumbnail: reader.result}));
+      }
+      reader.readAsDataURL(file);
     }
-  }, []);
+
+  }
+
+
+
+
+
+  const handleExport = () => {
+    const dataToExport = items.map(({ id, title, brand, stock, price }) => ({ id, title, brand, stock, price }));
+    exportToExcel(dataToExport, "My-Inventory-Report");
+  }
 
   useEffect(() => {
-    if (products.length > 0) {
-      saveData("my-inventory", products);
+    const savedProducts = localStorage.getItem("my-inventory");
+    if (savedProducts) {
+      dispatch(setProducts(JSON.parse(savedProducts)));
+      setLoading(false);
+    } else {
+      dispatch(fetchProducts()).then(() => setLoading(false));
     }
-  }, [products]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      saveData("my-inventory", items);
+    }
+  }, [items]);
+
 
   if (loading) {
     return (
@@ -85,163 +167,115 @@ const Inventory = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
-        <div className="relative max-w-md mx-auto">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <svg
-              className="h-5 w-5 text-blue-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+ <div className="space-y-8 p-4">
+    <div className="bg-white dark:bg-slate-800 p-8 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+      <div className="flex flex-col items-center space-y-6">
+        
+        <div className="relative w-full max-w-2xl group">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+            <i className="fas fa-search text-indigo-400 group-focus-within:text-indigo-600 transition-colors" />
           </div>
+          
           <input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search products by name or brand..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-12 pr-4 py-3 bg-white border-0 rounded-full shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all duration-200 text-gray-900"
+            className="block w-full pl-14 pr-12 py-4 bg-gray-50 dark:bg-slate-700/50 border-none rounded-2xl shadow-inner focus:ring-2 focus:ring-indigo-500 transition-all duration-300 text-gray-900 dark:text-white dark:placeholder-gray-500 text-lg"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-400 hover:text-indigo-600 transition-colors"
+            >
+              <i className="fas fa-times-circle text-lg" />
+            </button>
+          )}
+        </div>
+
+        {/* Category Pills */}
+        <div className="flex flex-wrap gap-3 justify-center">
+          {['All', 'Beauty', 'Fragrances', 'Furniture', 'Other'].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-8 py-2.5 rounded-full text-sm font-bold transition-all duration-300 transform active:scale-95
+                ${selectedCategory === cat 
+                  ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none scale-105' 
+                  : 'bg-white dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-100 dark:border-gray-600'
+                }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
           {searchTerm && (
             <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
               <button
                 onClick={() => setSearchTerm("")}
                 className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                aria-label="Clear search"
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <i className="fas fa-times text-sm" aria-hidden="true" />
               </button>
             </div>
           )}
         </div>
       </div>
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
           Inventory Management (Live API)
         </h2>
+
+        <button onClick={handleExport} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 shadow-sm">
+          <i className="fas fa-file-excel mr-2" aria-hidden="true" />
+          Export Data
+        </button>
+
+
+
+
+
+
         <button
           onClick={() => setIsModalOpen(true)}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 shadow-sm"
         >
-          <svg
-            className="-ml-1 mr-2 h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-            />
-          </svg>
+          <i className="fas fa-plus -ml-1 mr-2" aria-hidden="true" />
           Add New Product
         </button>
       </div>
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
-        <table className="w-full text-left border-collapse">
-          <tbody className="divide-y divide-gray-100 ">
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <td className="px-6 py-4 font-semibold text-gray-600">Product</td>
-              <td className="px-6 py-4 font-semibold text-gray-600">Brand</td>
-              <td className="px-6 py-4 font-semibold text-gray-600">Stock</td>
-              <td className="px-6 py-4 font-semibold text-gray-600">Price</td>
-              <td className="px-6 py-4 font-semibold text-gray-600">Actions</td>
-            </tr>
-            {filteredProducts.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-6 py-12 text-center text-gray-500"
-                >
-                  No products match your search.
-                </td>
-              </tr>
-            ) : (
-              filteredProducts.map((item) => (
-                <tr
-                  key={item.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-6 py-4 flex items-center gap-3">
-                    <img
-                      src={item.thumbnail}
-                      alt={item.title}
-                      className="w-10 h-10 rounded shadow-sm object-cover mx-4"
-                    />
-                    <span className="text-gray-800 font-medium">
-                      {item.title}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4 text-gray-500">{item.brand}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${item.stock > 10 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-                    >
-                      {item.stock} in stock
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-700 font-bold">
-                    ${Number(item.price || 0).toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => handleDeleteProduct(item.id)}
-                      className="inline-flex items-center px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded-md transition-colors duration-200"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.093A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.907L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.length===0?(
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-500 dark:text-gray-400">No products match your search.</p>
+            </div>
+          ):(
+            filteredProducts.map((item) => (
+              <ProductCart
+                key={item.id} 
+                product={item} 
+                onEdit={handleEditProduct} 
+                onDelete={handleDeleteProduct} 
+              />
+            ))
+          )}
       </div>
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">
-                Add New Product
+          <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                {isEditing ? "Edit Product" : "Add New Product"}
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setIsEditing(false);
+                  setEditingId(null);
+                  setNewItem({ title: "", brand: "", stock: "", price: "", thumbnail: "" });
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl "
               >
                 &times;
@@ -249,7 +283,7 @@ const Inventory = () => {
             </div>
             <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-md  mb-1">
+                <label className="block text-gray-700 text-sm font-md  mb-1 dark:text-gray-300">
                   Product Title
                 </label>
                 <input
@@ -258,12 +292,12 @@ const Inventory = () => {
                   name="title"
                   value={newItem.title}
                   onChange={handleChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   placeholder="e.g. iphone 15"
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-md  mb-1">
+                <label className="block text-gray-700 text-sm font-md  mb-1 dark:text-gray-300">
                   Brand
                 </label>
                 <input
@@ -272,12 +306,12 @@ const Inventory = () => {
                   name="brand"
                   value={newItem.brand}
                   onChange={handleChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   placeholder="Apple, Samsung, etc."
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-md  mb-1">
+                <label className="block text-gray-700 text-sm font-md  mb-1 dark:text-gray-300">
                   Stock
                 </label>
                 <input
@@ -286,12 +320,12 @@ const Inventory = () => {
                   name="stock"
                   value={newItem.stock}
                   onChange={handleChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   placeholder="999"
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-md  mb-1">
+                <label className="block text-gray-700 text-sm font-md  mb-1 dark:text-gray-300">
                   Price ($)
                 </label>
                 <input
@@ -300,15 +334,32 @@ const Inventory = () => {
                   name="price"
                   value={newItem.price}
                   onChange={handleChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   placeholder="0.00"
                 />
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-md  mb-1 dark:text-gray-300">Product Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4  file:rounded-xl file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                    />
+                  {newItem.thumbnail && (
+                    <img src={newItem.thumbnail} alt="Preview" className="w-24 h-24 object-cover rounded-xl border border-indigo-500 p-1" />
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setIsEditing(false);
+                    setEditingId(null);
+                    setNewItem({ title: "", brand: "", stock: "", price: "", thumbnail: "" });
+                  }}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>
@@ -316,7 +367,7 @@ const Inventory = () => {
                   type="submit"
                   className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md transition"
                 >
-                  Save Product
+                  {isEditing ? "Update Product" : "Save Product"}
                 </button>
               </div>
             </form>

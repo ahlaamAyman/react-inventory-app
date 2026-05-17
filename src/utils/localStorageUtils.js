@@ -20,3 +20,4 @@ export const loadData = (key) => {
 export const removeData = (key) => {
   localStorage.removeItem(key);
 };
+
