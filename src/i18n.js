@@ -1,66 +1,30 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import enTranslations from './locales/en.json';
+import arTranslations from './locales/ar.json';
 
 const resources = {
   en: {
-    translation: {
-      appName: 'Inventory System',
-      nav: {
-        dashboard: 'Dashboard',
-        inventory: 'Inventory',
-        customers: 'Customers',
-        pos: 'Sales (POS)',
-        orders: 'Orders',
-        growth: 'Growth',
-        settings: 'Settings',
-        logout: 'Logout',
-        version: 'version 1.0',
-      },
-      header: {
-        dashboard: 'Dashboard',
-      },
-      language: {
-        label: 'Language',
-        english: 'English',
-        arabic: 'Arabic',
-      },
-    },
+    translation: enTranslations,
   },
   ar: {
-    translation: {
-      appName: 'نظام المخزون',
-      nav: {
-        dashboard: 'الرئيسية',
-        inventory: 'المخزون',
-        customers: 'العملاء',
-        pos: 'المبيعات',
-        orders: 'الطلبات',
-        growth: 'النمو',
-        settings: 'الإعدادات',
-        logout: 'تسجيل الخروج',
-        version: 'الإصدار 1.0',
-      },
-      header: {
-        dashboard: 'الرئيسية',
-      },
-      language: {
-        label: 'اللغة',
-        english: 'الإنجليزية',
-        arabic: 'العربية',
-      },
-    },
+    translation: arTranslations,
   },
 };
 
 const savedLanguage = localStorage.getItem('appLanguage') || 'en';
 
-const setDirection = (lng) => {
+export const setDocumentDirection = (lng) => {
   const dir = lng === 'ar' ? 'rtl' : 'ltr';
   document.documentElement.lang = lng;
   document.documentElement.dir = dir;
+  if (document.body) {
+    document.body.dir = dir;
+  }
 };
 
-setDirection(savedLanguage);
+// Apply direction on initial script evaluation
+setDocumentDirection(savedLanguage);
 
 i18n.use(initReactI18next).init({
   resources,
@@ -76,7 +40,7 @@ i18n.use(initReactI18next).init({
 
 i18n.on('languageChanged', (lng) => {
   localStorage.setItem('appLanguage', lng);
-  setDirection(lng);
+  setDocumentDirection(lng);
 });
 
 export default i18n;

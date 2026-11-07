@@ -1,68 +1,114 @@
-import React from 'react'
-const ProductCart = ({product, onEdit, onDelete}) => {
-  const isLowStock = product.stock <= 5 && product.stock > 0;
-  const isOutOfStock = product.stock === 0;
+import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
+
+const ProductCart = ({ product, onEdit, onDelete }) => {
+  const { t } = useTranslation();
+  const stock = Number(product.stock) || 0;
+  const isLowStock = stock <= 5 && stock > 0;
+  const isOutOfStock = stock === 0;
 
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border p-4 transition-all hover:shadow-xl hover:-translate-y-1 duration-300 flex flex-col h-full 
-      ${isLowStock ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'border-gray-100 dark:border-gray-700'}`}>
-        
-        <div className='relative h-48 mb-4 bg-gray-50 dark:bg-gray-700 rounded-xl overflow-hidden'>
-            <img src={product.thumbnail || "https://via.placeholder.com/150"}
-                alt={product.title}
-                className='w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal p-2'
-            />
-            
-            <div className={`absolute top-2 right-2 px-3 py-1 rounded-lg text-[10px] font-bold text-white shadow-md transition-all
-                ${isOutOfStock ? 'bg-gray-900 animate-pulse' : 
-                  isLowStock ? 'bg-red-600 animate-bounce' : 'bg-green-500'}`}>
-                {isOutOfStock ? 'OUT OF STOCK' : `${product.stock} Units`}
-            </div>
+    <div
+      className={`group bg-white dark:bg-slate-800 rounded-3xl p-5 shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col h-full ${
+        isLowStock
+          ? 'border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.15)] dark:border-amber-500/50'
+          : isOutOfStock
+          ? 'border-rose-300 dark:border-rose-800/60 opacity-80'
+          : 'border-slate-100 dark:border-slate-700/80'
+      }`}
+    >
+      {/* Product Image Frame */}
+      <div className="relative h-48 mb-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl overflow-hidden flex items-center justify-center p-3">
+        <img
+          src={product.thumbnail || 'https://via.placeholder.com/200?text=No+Image'}
+          alt={product.title}
+          className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
 
-            {isLowStock && (
-              <div className="absolute inset-0 bg-red-500/5 pointer-events-none flex items-center justify-center">
-                 <i className="fas fa-exclamation-triangle text-red-500/20 text-6xl"></i>
-              </div>
-            )}
+        {/* Stock Badge */}
+        <div
+          className={`absolute top-3 end-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white shadow-md ${
+            isOutOfStock
+              ? 'bg-rose-600'
+              : isLowStock
+              ? 'bg-amber-500 animate-pulse'
+              : 'bg-emerald-600'
+          }`}
+        >
+          {isOutOfStock
+            ? t('inventory.card.outOfStock')
+            : `${stock} ${t('inventory.card.inStock')}`}
         </div>
 
-        <div className='grid grid-rows-[auto_1fr_auto] flex-grow gap-2'>
-            <div className="min-h-[60px]">
-                <h3 className='text-md font-bold text-gray-800 dark:text-white line-clamp-2 leading-tight'>
-                    {product.title}
-                </h3>
-                <p className='text-xs text-gray-400 mt-1 uppercase tracking-wider font-semibold'>
-                    {product.brand}
-                </p>
-            </div>
+        {product.category && (
+          <span className="absolute bottom-3 start-3 px-2.5 py-1 rounded-xl bg-slate-900/70 backdrop-blur-sm text-[10px] font-semibold text-white capitalize">
+            {product.category}
+          </span>
+        )}
+      </div>
 
-            <div className='flex items-center justify-between'>
-                <span className='text-indigo-600 dark:text-indigo-400 font-black text-xl'>
-                    ${product.price}
-                </span>
-                {isLowStock && <span className="text-[10px] text-red-500 font-bold animate-pulse">Low Inventory</span>}
-            </div>
-
-            <div className='grid grid-cols-2 gap-2 border-t dark:border-gray-700 pt-3 mt-2'>
-                <button 
-                    onClick={() => onEdit(product)} 
-                    className='flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-sm active:scale-95 text-sm'
-                >
-                    <i className='fas fa-edit'></i>
-                    <span>Edit</span>
-                </button>
-                
-                <button 
-                    onClick={() => onDelete(product.id)} 
-                    className='flex items-center justify-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-500 text-red-600 hover:text-white rounded-xl transition-all active:scale-95 text-sm font-medium'
-                >
-                    <i className='fas fa-trash'></i>
-                    <span>Delete</span>
-                </button>
-            </div>
+      {/* Product Metadata */}
+      <div className="flex flex-col flex-1 justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            {product.brand || '---'}
+          </p>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-2 mt-1 leading-snug">
+            {product.title}
+          </h3>
         </div>
+
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-400 block">{t('common.price')}</span>
+            <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">
+              ${Number(product.price || 0).toFixed(2)}
+            </span>
+          </div>
+          {isLowStock && (
+            <span className="text-[11px] font-bold text-amber-500 flex items-center gap-1">
+              <i className="fas fa-exclamation-triangle"></i> {t('inventory.card.lowStock')}
+            </span>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={() => onEdit(product)}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs font-bold transition-all active:scale-95"
+          >
+            <i className="fas fa-edit"></i>
+            <span>{t('common.edit')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(product.id)}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white rounded-xl text-xs font-bold transition-all active:scale-95"
+          >
+            <i className="fas fa-trash-alt"></i>
+            <span>{t('common.delete')}</span>
+          </button>
+        </div>
+      </div>
     </div>
-  )
-}
+  );
+};
+
+ProductCart.propTypes = {
+  product: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string,
+    brand: PropTypes.string,
+    category: PropTypes.string,
+    price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    stock: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    thumbnail: PropTypes.string,
+  }).isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+};
 
 export default ProductCart;

@@ -1,62 +1,101 @@
-import React from 'react'
-import { useTheme } from '../../context/ThemeContext'
+import PropTypes from 'prop-types';
+import { useTranslation } from 'react-i18next';
 
-const LowStockTable = ({items}) => {
-  const { darkMode } = useTheme();
+const LowStockTable = ({ items }) => {
+  const { t } = useTranslation();
+
   return (
-    <div className='bg-white p-6 rounded-3xl shadow-sm border border-red-50 h-full dark:bg-gray-800 dark:border-gray-700'>
-        <div className='flex items-center gap-3 mb-6'>
-            <div className='bg-red-100 p-2 rounded-lg'>
-                <i className='fas fa-exclamation-triangle text-red-600'></i>
-            </div>
-            <h3 className='text-xl font-bold text-gray-800 dark:text-white'>Low Stock Alerts</h3>
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-700 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg">
+            <i className="fas fa-exclamation-triangle"></i>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              {t('lowStock.title')}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {t('lowStock.subtitle')}
+            </p>
+          </div>
         </div>
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+          {items.length} {t('lowStock.alertsCount')}
+        </span>
+      </div>
 
-
-        <div className='overflow-x-auto'>
-            <table className='w-full table-auto border-collapse'>
-                <thead>
-                    <tr className='text-gray-400 text-sm border-b border-gray-50 dark:border-gray-700'>
-                        <th className='pb-4 px-2'>Product</th>
-                        <th className='pb-4'> Stock</th>
-                        <th className='pb-4 text-right'>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.length > 0 ? (
-                        items.map((item) => (
-                            <tr key={item.id} className={`text-sm transition-colors ${Number(item.stock)<3 ? 'bg-red-50 dark:bg-red-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                <td className='py-4 px-2'>
-                                    <div className='flex flex-col'>
-                                        <span className='font-bold dark:text-white'>{item.title}</span>
-                                        {Number(item.stock) < 3 && <span className='text-red-500 text-xs dark:text-red-400'>Only {item.stock} left in stock!</span>}
-                                    </div>
-                                </td>
-                                <td className='py-4 px-2'>
-                                    <span className={`font-bold px-2 py-1 rounded-lg ${Number(item.stock) < 3 ? 'bg-red-100 text-red-700 ' : 'bg-green-100 text-green-700'}`}>{item.stock}</span>
-                                </td>
-                                <td className='py-4 px-2 text-right'>
-                                    <button className='bg-blue-50 text-blue-600 py-1  rounded-md text-xs font-bold hover:bg-blue-600 hover:text-white transition-all'>
-                                        Order Now
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan="3" className="py-4 px-2 text-center text-gray-500 dark:text-gray-400">
-                               <i className='fas fa-check-circle text-green-400 mb-2 block text-2xl'></i>
-                               All item are well stocked!
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
-
-        </div>
-      
+      <div className="overflow-x-auto flex-1">
+        <table className="w-full text-left border-collapse" dir="auto">
+          <thead>
+            <tr className="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-100 dark:border-slate-700/60">
+              <th className="pb-3 px-2 text-start">{t('lowStock.product')}</th>
+              <th className="pb-3 px-2 text-center">{t('lowStock.remaining')}</th>
+              <th className="pb-3 px-2 text-end">{t('lowStock.status')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+            {items.length > 0 ? (
+              items.map((item) => (
+                <tr key={item.id} className="text-sm hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                  <td className="py-3 px-2">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={item.thumbnail || 'https://via.placeholder.com/40'}
+                        alt={item.title}
+                        className="w-10 h-10 object-contain rounded-xl bg-slate-50 dark:bg-slate-900 p-1"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]">
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-slate-400">{item.brand || '---'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-center">
+                    <span
+                      className={`inline-block font-black px-2.5 py-1 rounded-xl text-xs ${
+                        Number(item.stock) <= 2
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                      }`}
+                    >
+                      {item.stock} {t('lowStock.left')}
+                    </span>
+                  </td>
+                  <td className="py-3 px-2 text-end">
+                    <span className="text-xs font-semibold text-rose-500">
+                      {t('lowStock.reorder')}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3" className="py-8 text-center text-slate-400">
+                  <i className="fas fa-check-circle text-emerald-500 text-2xl mb-2 block"></i>
+                  {t('lowStock.allStocked')}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default LowStockTable
+LowStockTable.propTypes = {
+  items: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      title: PropTypes.string,
+      brand: PropTypes.string,
+      stock: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      thumbnail: PropTypes.string,
+    })
+  ).isRequired,
+};
+
+export default LowStockTable;

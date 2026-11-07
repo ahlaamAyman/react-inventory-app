@@ -1,93 +1,124 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { updateUserProfile } from '../store/authSlice';
 
 const ProfileSettings = () => {
+  const { t } = useTranslation();
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+
   const [profile, setProfile] = useState({
-    name: 'User Name',
-    email: 'user@example.com',
-    phone: '01007080342',
-    role: 'Software Engineer'
+    name: user?.name || 'Store Administrator',
+    email: user?.email || 'admin@store.com',
+    phone: user?.phone || '01007080342',
+    role: user?.role || 'Store Manager',
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        role: user.role || prev.role,
+      }));
+    }
+  }, [user]);
 
   const handleSave = (e) => {
     e.preventDefault();
-    toast.success('تم تحديث بيانات الملف الشخصي بنجاح!');
+    if (!profile.name.trim()) {
+      toast.error('Full name is required.');
+      return;
+    }
+    dispatch(updateUserProfile(profile));
+    toast.success(t('profileSettings.saved'));
   };
 
   return (
-    <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+    <div className="space-y-8 animate-in fade-in duration-300">
       <div>
-        <h2 className="text-2xl font-black text-gray-800 dark:text-white leading-none">Profile Details</h2>
-        <p className="text-sm text-gray-400 mt-2 font-medium">Manage your personal information and account avatar.</p>
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+          {t('profileSettings.title')}
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          {t('profileSettings.subtitle')}
+        </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-8">
-        
-        <div className="flex items-center gap-6 bg-gray-50/50 dark:bg-slate-700/20 p-6 rounded-[2rem] border border-dashed border-gray-200 dark:border-gray-700 w-fit">
-          <div className="relative group w-24 h-24">
-            <div className="w-full h-full rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-3xl font-black border-2 border-white dark:border-slate-800 shadow-md">
-              {profile.name.charAt(0).toUpperCase()}
-            </div>
-            <button type="button" className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-800 p-2.5 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 active:scale-95 transition-all">
-              <i className="fas fa-camera text-xs"></i>
-            </button>
+      <form onSubmit={handleSave} className="space-y-6">
+        {/* Avatar Display */}
+        <div className="flex items-center gap-5 p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 w-fit">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl font-black shadow-md shadow-indigo-600/20">
+            {profile.name ? profile.name.charAt(0).toUpperCase() : 'A'}
           </div>
           <div>
-            <h4 className="text-sm font-black dark:text-white">Profile Picture</h4>
-            <p className="text-[11px] text-gray-400 mt-1">PNG or JPG. Max 2MB.</p>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">{profile.name}</h4>
+            <p className="text-xs text-slate-400 mt-0.5">{profile.role}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-4">Full Name</label>
-            <input 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              {t('profileSettings.fullName')}
+            </label>
+            <input
               required
-              type="text" 
+              type="text"
               value={profile.name}
-              onChange={(e) => setProfile({...profile, name: e.target.value})}
-              className="w-full p-4 rounded-[1.5rem] bg-gray-50 dark:bg-slate-700 border-none dark:text-white focus:ring-2 focus:ring-indigo-500 font-bold shadow-inner" 
+              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+              className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-4">Email Address</label>
-            <input 
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              {t('profileSettings.email')}
+            </label>
+            <input
               required
-              type="email" 
+              type="email"
               value={profile.email}
-              onChange={(e) => setProfile({...profile, email: e.target.value})}
-              className="w-full p-4 rounded-[1.5rem] bg-gray-50 dark:bg-slate-700 border-none dark:text-white focus:ring-2 focus:ring-indigo-500 font-bold shadow-inner" 
+              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+              className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-4">Phone Number</label>
-            <input 
-              type="tel" 
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              {t('profileSettings.phone')}
+            </label>
+            <input
+              type="tel"
               value={profile.phone}
-              onChange={(e) => setProfile({...profile, phone: e.target.value})}
-              className="w-full p-4 rounded-[1.5rem] bg-gray-50 dark:bg-slate-700 border-none dark:text-white focus:ring-2 focus:ring-indigo-500 font-bold shadow-inner" 
+              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+              className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-4">Position</label>
-            <input 
-              type="text" 
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              {t('profileSettings.role')}
+            </label>
+            <input
+              type="text"
               value={profile.role}
               disabled
-              className="w-full p-4 rounded-[1.5rem] bg-gray-100 dark:bg-slate-700/50 border-none text-gray-400 dark:text-gray-500 font-bold cursor-not-allowed shadow-inner" 
+              className="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-400 text-xs sm:text-sm font-bold cursor-not-allowed"
             />
           </div>
         </div>
 
-        <div className="pt-8 border-t dark:border-gray-700 flex justify-end">
-          <button 
+        <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+          <button
             type="submit"
-            className="px-12 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
+            className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition active:scale-95"
           >
-            Save Profile
+            {t('profileSettings.saveButton')}
           </button>
         </div>
       </form>

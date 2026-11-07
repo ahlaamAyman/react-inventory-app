@@ -1,77 +1,117 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const SecuritySettings = () => {
+  const { t } = useTranslation();
   const [passwords, setPasswords] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
   const handleUpdate = (e) => {
     e.preventDefault();
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      return toast.error("كلمات المرور الجديدة غير متطابقة!");
+
+    if (passwords.newPassword.length < 6) {
+      toast.error(t('securitySettings.minChars'));
+      return;
     }
-    toast.success("تم تحديث كلمة المرور بنجاح!");
+
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      toast.error(t('securitySettings.mismatch'));
+      return;
+    }
+
+    // Verify against registered user if present
+    let registeredUser = null;
+    try {
+      const raw = localStorage.getItem('registeredUser');
+      if (raw) registeredUser = JSON.parse(raw);
+    } catch {
+      registeredUser = null;
+    }
+
+    if (registeredUser && passwords.currentPassword !== registeredUser.password) {
+      toast.error(t('securitySettings.currentWrong'));
+      return;
+    }
+
+    // Update stored password
+    if (registeredUser) {
+      registeredUser.password = passwords.newPassword;
+      localStorage.setItem('registeredUser', JSON.stringify(registeredUser));
+    }
+
+    toast.success(t('securitySettings.saved'));
     setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
   return (
-    <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
-      <div className="flex items-center justify-between border-b dark:border-gray-700 pb-6">
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
-          <h2 className="text-2xl font-black dark:text-white leading-none tracking-tight">Security & Privacy</h2>
-          <p className="text-sm text-gray-400 mt-2 font-medium">Manage your password and protect your account.</p>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            {t('securitySettings.title')}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            {t('securitySettings.subtitle')}
+          </p>
         </div>
-        <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-2xl text-red-600 shadow-sm border border-red-100 dark:border-transparent">
-          <i className="fas fa-shield-alt text-xl"></i>
+        <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center text-xl shrink-0">
+          <i className="fas fa-shield-alt"></i>
         </div>
       </div>
 
-      <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
+      <form onSubmit={handleUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
         <div className="space-y-2 md:col-span-2">
-          <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-4">Current Password</label>
-          <input 
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            {t('securitySettings.currentPassword')}
+          </label>
+          <input
             required
-            type="password" 
+            type="password"
             value={passwords.currentPassword}
-            onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})}
-            className="w-full p-4 rounded-[1.5rem] bg-gray-50 dark:bg-slate-700 border-none dark:text-white focus:ring-2 focus:ring-red-500 transition-all font-bold shadow-inner"
+            onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-rose-500 transition"
             placeholder="••••••••"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-4">New Password</label>
-          <input 
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            {t('securitySettings.newPassword')}
+          </label>
+          <input
             required
-            type="password" 
+            type="password"
             value={passwords.newPassword}
-            onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})}
-            className="w-full p-4 rounded-[1.5rem] bg-gray-50 dark:bg-slate-700 border-none dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all font-bold shadow-inner"
-            placeholder="••••••••"
+            onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            placeholder="Min 6 characters"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] ml-4">Confirm Password</label>
-          <input 
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            {t('securitySettings.confirmPassword')}
+          </label>
+          <input
             required
-            type="password" 
+            type="password"
             value={passwords.confirmPassword}
-            onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})}
-            className="w-full p-4 rounded-[1.5rem] bg-gray-50 dark:bg-slate-700 border-none dark:text-white focus:ring-2 focus:ring-indigo-500 transition-all font-bold shadow-inner"
-            placeholder="••••••••"
+            onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+            className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            placeholder="Re-enter new password"
           />
         </div>
 
-        <div className="md:col-span-2 pt-6 flex justify-end">
-          <button 
+        <div className="md:col-span-2 pt-6 flex justify-end border-t border-slate-200 dark:border-slate-800">
+          <button
             type="submit"
-            className="px-12 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
+            className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition active:scale-95"
           >
-            Update Password
+            {t('securitySettings.saveButton')}
           </button>
         </div>
       </form>

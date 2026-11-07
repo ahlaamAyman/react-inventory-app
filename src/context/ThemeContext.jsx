@@ -1,30 +1,39 @@
-import { createContext, useContext, useEffect, useState } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import PropTypes from 'prop-types';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
 
- export const ThemeProvider = ({ children }) => {
-    // Check localStorage on init, default to false if not set
-    const [darkMode, setDarkMode] = useState(() => {
-        const saved = localStorage.getItem('theme');
-        return saved === 'dark';
-    });
-    const toggleDarkMode = () => setDarkMode(!darkMode);
+export const ThemeProvider = ({ children }) => {
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('theme');
+      return saved === 'dark';
+    } catch {
+      return false;
+    }
+  });
 
-    // Apply theme class to html element
-    useEffect(() => {
-        if(darkMode){
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-    }, [darkMode]);
+  const toggleDarkMode = () => setDarkMode((prev) => !prev);
 
-    return (
-        <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
-            {children}
-        </ThemeContext.Provider>
-    );
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
-}
+  return (
+    <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+ThemeProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
 export const useTheme = () => useContext(ThemeContext);
